@@ -1,0 +1,46 @@
+name: Fix Redbubble shop URL
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-shop-url:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate and fix Redbubble shop URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          old='https://www.redbubble.com/people/anomaly-raw'
+          new='https://www.redbubble.com/people/anomaly-raw/shop'
+          grep -q "$old" index.html
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = 'https://www.redbubble.com/people/anomaly-raw'
+          new = 'https://www.redbubble.com/people/anomaly-raw/shop'
+          s2 = s.replace(old, new)
+          if s2 == s:
+              raise SystemExit('No Redbubble shop URL replacement made')
+          p.write_text(s2, encoding='utf-8')
+          PY
+          grep -q "$new" index.html
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: point Redbubble shop links to shop page'
+          git push

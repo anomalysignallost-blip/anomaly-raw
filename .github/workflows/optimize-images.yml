@@ -1,0 +1,57 @@
+name: Optimize site images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  optimize-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install WebP tools
+        run: sudo apt-get update && sudo apt-get install -y webp
+
+      - name: Convert PNG assets to WebP
+        shell: bash
+        run: |
+          set -euo pipefail
+          for src in assets/*.png; do
+            base="${src%.png}"
+            cwebp -quiet -mt -m 6 -q 82 "$src" -o "${base}.webp"
+          done
+
+      - name: Verify optimized files
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find assets -maxdepth 1 -type f -name '*.webp' | wc -l)
+          test "$count" -ge 5
+          for src in assets/*.png; do
+            webp="${src%.png}.webp"
+            test -s "$webp"
+            png_size=$(stat -c%s "$src")
+            webp_size=$(stat -c%s "$webp")
+            echo "$src: ${png_size} bytes -> ${webp_size} bytes"
+            test "$webp_size" -lt "$png_size"
+          done
+
+      - name: Commit optimized assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/*.webp
+          if git diff --cached --quiet; then
+            echo "No optimized image changes to commit."
+            exit 0
+          fi
+          git commit -m "Optimize site images"
+          git push

@@ -1,0 +1,28 @@
+name: ANOMALY-RAW HTML regression test
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production HTML requirements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          checks = {
+              'favicon': '<link rel="icon" href="/favicon.svg"' in html,
+              'manifest': '<link rel="manifest" href="/site.webmanifest"' in html,
+              'jsonld': 'application/ld+json' in html,
+              'mobile menu': 'aria-label="Menu"' in html,
+          }
+          failed = [name for name, ok in checks.items() if not ok]
+          if failed:
+              print('RED — missing requirements:', ', '.join(failed))
+              raise SystemExit(1)
+          print('GREEN — all HTML requirements present')
+          PY

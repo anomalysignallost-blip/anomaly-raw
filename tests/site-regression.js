@@ -23,6 +23,11 @@ test('collection cards expose product and price action', () => {
   assert.equal((html.match(/data-design="0[1-5]"/g) || []).length, 5);
 });
 
+test('each design card has a clear accessible shopping label', () => {
+  const cardLabels = html.match(/aria-label="Shop Unit 0[1-5] on Redbubble"/g) || [];
+  assert.equal(cardLabels.length, 5);
+});
+
 test('mobile sticky shop CTA is explicit and touch-friendly', () => {
   assert.match(html, /class="sticky-btn"/);
   assert.match(html, /SHOP DROP 01 ↗/);

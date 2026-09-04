@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Run site regression tests
+        run: node tests/site-regression.js
+
       - name: Install WebP tools
         run: sudo apt-get update && sudo apt-get install -y webp
 

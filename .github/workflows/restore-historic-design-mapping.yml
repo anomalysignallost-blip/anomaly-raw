@@ -1,0 +1,71 @@
+name: Restore historically grounded ANOMALY-RAW design mapping
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore-mapping:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore mapping from original Drop 01 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          mapping = {
+              '01': 'https://www.redbubble.com/shop/ap/183462603?asc=u',
+              '02': 'https://www.redbubble.com/shop/ap/183462311?asc=u',
+              '03': 'https://www.redbubble.com/shop/ap/183462169?asc=u',
+              '04': 'https://www.redbubble.com/shop/ap/183462001?asc=u',
+              '05': 'https://www.redbubble.com/shop/ap/183461091?asc=u',
+          }
+          for unit, url in mapping.items():
+              pattern = rf'(<a class="card design" data-design="{unit}"[^>]*?href=")[^"]+("[^>]*>)'
+              s2, n = re.subn(pattern, rf'\g<1>{url}\g<2>', s, count=1)
+              if n != 1:
+                  raise SystemExit(f'Unit {unit}: expected exactly one card, found {n}')
+              s = s2
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Verify all five mappings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('index.html').read_text(encoding='utf-8')
+          expected = {
+              '01': '183462603',
+              '02': '183462311',
+              '03': '183462169',
+              '04': '183462001',
+              '05': '183461091',
+          }
+          for unit, rid in expected.items():
+              m = re.search(rf'<a class="card design" data-design="{unit}"[^>]*href="([^"]+)"', s)
+              if not m or rid not in m.group(1):
+                  raise SystemExit(f'Unit {unit} mapping verification failed')
+          print('ANOMALY-RAW: all 5 design mappings restored and verified.')
+          PY
+      - name: Commit mapping fix and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/restore-historic-design-mapping.yml
+          git commit -m 'Restore historically grounded design mapping'
+          git rm .github/workflows/restore-historic-design-mapping.yml
+          git commit -m 'Remove one-time mapping fixer'
+          git push

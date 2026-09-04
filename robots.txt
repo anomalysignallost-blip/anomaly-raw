@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+# Keep the public site fully crawlable.
 Sitemap: https://anomaly-raw.vercel.app/sitemap.xml
